@@ -1,1 +1,182 @@
+<!-- Animated SVG: Low-poly "3D" Lynx Head -->
+<svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 200 200"
+        width="360" height="360"
+        role="img" aria-label="Animated low-poly lynx head with subtle 3D rotation"
+>
+    <defs>
+        <!-- Fur gradients for 3D-ish shading -->
+        <linearGradient id="furBase" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%"  stop-color="#c79550"/>
+            <stop offset="50%" stop-color="#a87439"/>
+            <stop offset="100%" stop-color="#8b5f2f"/>
+            <!-- Gentle breathing of light -->
+            <animate attributeName="x1" values="0%;10%;0%" dur="8s" repeatCount="indefinite"/>
+            <animate attributeName="y1" values="0%;-5%;0%" dur="8s" repeatCount="indefinite"/>
+        </linearGradient>
 
+        <linearGradient id="furLeft" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"  stop-color="#8c5b2d"/>
+            <stop offset="100%" stop-color="#b38041"/>
+        </linearGradient>
+
+        <linearGradient id="furRight" x1="100%" y1="0%" x2="0%" y2="0%">
+            <stop offset="0%"  stop-color="#8c5b2d"/>
+            <stop offset="100%" stop-color="#b38041"/>
+        </linearGradient>
+
+        <linearGradient id="muzzleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%"  stop-color="#e5d7c6"/>
+            <stop offset="100%" stop-color="#cbb8a1"/>
+        </linearGradient>
+
+        <!-- Eye gradient for depth -->
+        <radialGradient id="iris" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stop-color="#61c15f"/>
+            <stop offset="60%"  stop-color="#2d8a2c"/>
+            <stop offset="100%" stop-color="#0f4f0f"/>
+        </radialGradient>
+
+        <!-- Subtle shadow to lift off the page -->
+        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.35"/>
+        </filter>
+    </defs>
+
+    <!-- Overall rotation group (simulates gentle 3D turn) -->
+    <g id="lynx" filter="url(#shadow)">
+        <animateTransform
+                attributeName="transform"
+                type="rotate"
+                dur="14s"
+                values="0 100 100; 8 100 100; -8 100 100; 0 100 100"
+                keyTimes="0; .33; .66; 1"
+                repeatCount="indefinite"
+        />
+
+        <!-- Head base (central panel) -->
+        <polygon
+                points="100,48 132,80 124,118 100,142 76,118 68,80"
+                fill="url(#furBase)" stroke="#603e1f" stroke-width="2" />
+
+        <!-- Left cheek -->
+        <polygon
+                points="68,80 48,92 58,120 76,118"
+                fill="url(#furLeft)" stroke="#603e1f" stroke-width="2" />
+        <!-- Right cheek -->
+        <polygon
+                points="132,80 152,92 142,120 124,118"
+                fill="url(#furRight)" stroke="#603e1f" stroke-width="2" />
+
+        <!-- Ears (with flick animation) -->
+        <g id="earLeft">
+            <polygon points="68,80 58,52 70,44 80,70"
+                     fill="#8b5f2f" stroke="#603e1f" stroke-width="2"/>
+            <!-- Ear tuft -->
+            <polyline points="66,50 62,42 64,53"
+                      fill="none" stroke="#2b1a0b" stroke-width="2" stroke-linecap="round"/>
+            <animateTransform attributeName="transform" type="rotate"
+                              values="0 68 70; -6 68 70; 0 68 70"
+                              dur="6s" repeatCount="indefinite"/>
+        </g>
+
+        <g id="earRight">
+            <polygon points="132,80 142,52 130,44 120,70"
+                     fill="#8b5f2f" stroke="#603e1f" stroke-width="2"/>
+            <!-- Ear tuft -->
+            <polyline points="134,50 138,42 136,53"
+                      fill="none" stroke="#2b1a0b" stroke-width="2" stroke-linecap="round"/>
+            <animateTransform attributeName="transform" type="rotate"
+                              values="0 132 70; 6 132 70; 0 132 70"
+                              dur="6s" repeatCount="indefinite"/>
+        </g>
+
+        <!-- Muzzle -->
+        <polygon
+                points="84,126 116,126 110,148 90,148"
+                fill="url(#muzzleGrad)" stroke="#6d4a2a" stroke-width="2" />
+
+        <!-- Nose -->
+        <path d="M98,132 Q100,128 102,132 L104,138 Q100,140 96,138 Z"
+              fill="#3c2a1a" stroke="#2a1b10" stroke-width="1.5"/>
+
+        <!-- Whisker pads -->
+        <ellipse cx="92" cy="140" rx="10" ry="6" fill="#e0d2c0" opacity="0.7"/>
+        <ellipse cx="108" cy="140" rx="10" ry="6" fill="#e0d2c0" opacity="0.7"/>
+        <!-- Whisker spots -->
+        <circle cx="88" cy="140" r="1.4" fill="#51341d"/>
+        <circle cx="94" cy="142" r="1.4" fill="#51341d"/>
+        <circle cx="98" cy="139" r="1.4" fill="#51341d"/>
+        <circle cx="112" cy="140" r="1.4" fill="#51341d"/>
+        <circle cx="106" cy="142" r="1.4" fill="#51341d"/>
+        <circle cx="102" cy="139" r="1.4" fill="#51341d"/>
+
+        <!-- Eyes -->
+        <g id="eyes">
+            <!-- Left eye socket -->
+            <path d="M78,108 Q86,98 94,108 Q86,112 78,108 Z"
+                  fill="#2a1b10" opacity="0.35"/>
+            <!-- Left iris/pupil -->
+            <ellipse cx="86" cy="108" rx="6.5" ry="5"
+                     fill="url(#iris)" stroke="#11310f" stroke-width="1"/>
+            <circle cx="86" cy="108" r="1.8" fill="#0b0b0b"/>
+            <circle cx="88" cy="106" r="1.2" fill="#ffffff" opacity="0.8"/>
+
+            <!-- Right eye socket -->
+            <path d="M106,108 Q114,98 122,108 Q114,112 106,108 Z"
+                  fill="#2a1b10" opacity="0.35"/>
+            <!-- Right iris/pupil -->
+            <ellipse cx="114" cy="108" rx="6.5" ry="5"
+                     fill="url(#iris)" stroke="#11310f" stroke-width="1"/>
+            <circle cx="114" cy="108" r="1.8" fill="#0b0b0b"/>
+            <circle cx="116" cy="106" r="1.2" fill="#ffffff" opacity="0.8"/>
+
+            <!-- Blinking lids (animate opacity) -->
+            <path id="lidL" d="M78,108 Q86,96 94,108 Q86,110 78,108 Z"
+                  fill="#b08149" opacity="0">
+                <animate attributeName="opacity"
+                         values="0;0;1;0"
+                         keyTimes="0;.45;.5;1"
+                         dur="5.5s"
+                         repeatCount="indefinite"/>
+            </path>
+            <path id="lidR" d="M106,108 Q114,96 122,108 Q114,110 106,108 Z"
+                  fill="#b08149" opacity="0">
+                <animate attributeName="opacity"
+                         values="0;0;1;0"
+                         keyTimes="0;.45;.5;1"
+                         dur="5.5s"
+                         repeatCount="indefinite"/>
+            </path>
+        </g>
+
+        <!-- Facial spots for lynx pattern -->
+        <g fill="#4a2f18" opacity="0.6">
+            <circle cx="70" cy="104" r="2"/>
+            <circle cx="74" cy="116" r="1.8"/>
+            <circle cx="130" cy="104" r="2"/>
+            <circle cx="126" cy="116" r="1.8"/>
+            <circle cx="100" cy="88" r="1.6"/>
+            <circle cx="108" cy="92" r="1.4"/>
+            <circle cx="92" cy="92" r="1.4"/>
+        </g>
+
+        <!-- Subtle chest/neck panel -->
+        <path d="M86,150 Q100,158 114,150 Q106,170 94,170 Z"
+              fill="#b3864c" stroke="#6a4525" stroke-width="2"/>
+
+        <!-- Gentle parallax (cheeks drift slightly) -->
+        <g>
+            <animateTransform attributeName="transform" type="translate"
+                              values="0 0; 1 0; -1 0; 0 0"
+                              keyTimes="0;.33;.66;1"
+                              dur="14s" repeatCount="indefinite"/>
+            <!-- overlays to create micro-movement -->
+            <polygon points="68,80 48,92 58,120 76,118"
+                     fill="none" stroke="none"/>
+            <polygon points="132,80 152,92 142,120 124,118"
+                     fill="none" stroke="none"/>
+        </g>
+    </g>
+</svg>
