@@ -1,4 +1,3 @@
-<!-- Animated SVG: Low-poly "3D" Lynx Head -->
 <svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 200 200"
@@ -92,10 +91,18 @@
                               dur="6s" repeatCount="indefinite"/>
         </g>
 
-        <!-- Muzzle -->
+        <!-- Muzzle with animated "talking" effect -->
         <polygon
+                id="muzzle"
                 points="84,126 116,126 110,148 90,148"
-                fill="url(#muzzleGrad)" stroke="#6d4a2a" stroke-width="2" />
+                fill="url(#muzzleGrad)" stroke="#6d4a2a" stroke-width="2">
+            <!-- Animate the opening and closing of the mouth -->
+            <animate attributeName="points"
+                     values="84,126 116,126 110,148 90,148; 84,126 116,126 110,158 90,158; 84,126 116,126 110,148 90,148"
+                     dur="1s"
+                     keyTimes="0;0.5;1"
+                     repeatCount="indefinite"/>
+        </polygon>
 
         <!-- Nose -->
         <path d="M98,132 Q100,128 102,132 L104,138 Q100,140 96,138 Z"
@@ -172,11 +179,6 @@
                               values="0 0; 1 0; -1 0; 0 0"
                               keyTimes="0;.33;.66;1"
                               dur="14s" repeatCount="indefinite"/>
-            <!-- overlays to create micro-movement -->
-            <polygon points="68,80 48,92 58,120 76,118"
-                     fill="none" stroke="none"/>
-            <polygon points="132,80 152,92 142,120 124,118"
-                     fill="none" stroke="none"/>
         </g>
     </g>
 </svg>
