@@ -1,7 +1,33 @@
 import cv2
 import time
+import subprocess
+import threading
+import queue
 from collections import Counter
 from deepface import DeepFace
+
+# Speech queue for non-blocking, sequential speech
+speech_queue = queue.Queue()
+
+
+def speech_worker():
+    """Background thread that processes speech queue sequentially."""
+    while True:
+        text = speech_queue.get()
+        if text is None:  # Shutdown signal
+            break
+        subprocess.run(['say', text])
+        speech_queue.task_done()
+
+
+# Start the speech worker thread
+speech_thread = threading.Thread(target=speech_worker, daemon=True)
+speech_thread.start()
+
+
+def speak(text):
+    """Queue text for speech. Non-blocking, but speeches play sequentially."""
+    speech_queue.put(text)
 
 # Load face cascade classifier for fast detection (much faster than DeepFace's internal detector for video)
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
@@ -15,6 +41,10 @@ no_face_frames = 0  # Counter for frames without a face
 NO_FACE_THRESHOLD = 15  # Frames without face before resetting
 last_face_position = None  # Track face position to detect new person
 POSITION_CHANGE_THRESHOLD = 150  # Pixels - if face moves more than this, it's a new person
+greeted = False  # Track if we've greeted the current person
+sentiment_announced = False  # Track if we've announced the sentiment
+sentiment_locked_time = None  # When sentiment was locked (for cooldown)
+COOLDOWN_DURATION = 5  # Seconds to wait before new analysis
 
 # Initialize webcam (0 is usually the default Mac webcam)
 cap = cv2.VideoCapture(0)
@@ -58,10 +88,16 @@ while True:
         last_face_position = current_face_center
 
         # Start timing when face first detected or new person appears
-        if face_detected_time is None or is_new_person:
+        # Only restart if no active analysis (face_detected_time is None) or
+        # if new person AND previous analysis is complete
+        if face_detected_time is None or (is_new_person and sentiment_announced):
             face_detected_time = time.time()
             sentiment_samples = []
             locked_sentiment = None
+            sentiment_announced = False
+            # Greet the person once when analysis starts
+            speak("Welcome to Lynqtech, how are you today?")
+            greeted = True
 
         # Draw rectangle around face
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -93,6 +129,32 @@ while True:
                 else:
                     locked_sentiment = "neutral"
 
+                # Announce the sentiment
+                if not sentiment_announced:
+                    speak(f"You seem to be feeling {locked_sentiment}")
+                    sentiment_lower = locked_sentiment.lower()
+                    if sentiment_lower == "happy":
+                        speak("You are here to work, not to be happy")
+                    elif sentiment_lower == "sad":
+                        speak("Don't be sad, think about your next paycheck")
+                    elif sentiment_lower == "angry":
+                        speak("Don't be angry, the weekend is around the corner")
+                    elif sentiment_lower == "neutral":
+                        speak("Hey, please be happy, you work at lynqtech")
+                    sentiment_announced = True
+                    sentiment_locked_time = time.time()
+
+        # Check if cooldown period is over, then reset for new analysis
+        if sentiment_announced and sentiment_locked_time:
+            if time.time() - sentiment_locked_time > COOLDOWN_DURATION:
+                face_detected_time = None
+                locked_sentiment = None
+                sentiment_samples = []
+                last_face_position = None
+                greeted = False
+                sentiment_announced = False
+                sentiment_locked_time = None
+
         if locked_sentiment:
             # Display the locked sentiment
             cv2.putText(frame, locked_sentiment.upper(), (x, y - 10),
@@ -106,6 +168,9 @@ while True:
             locked_sentiment = None
             sentiment_samples = []
             last_face_position = None
+            greeted = False
+            sentiment_announced = False
+            sentiment_locked_time = None
 
     # 5. Display the resulting frame
     cv2.imshow('Mac Pro Sentiment Analysis', frame)
