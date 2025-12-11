@@ -16,7 +16,7 @@ def speech_worker():
         text = speech_queue.get()
         if text is None:  # Shutdown signal
             break
-        subprocess.run(['say', text])
+        subprocess.run(['say', '-r', '195', text])  # Default is ~175 wpm, 195 is ~10% faster
         speech_queue.task_done()
 
 
