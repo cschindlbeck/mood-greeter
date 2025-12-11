@@ -141,6 +141,8 @@ while True:
                         speak("Don't be angry, the weekend is around the corner")
                     elif sentiment_lower == "fear":
                         speak("Don't be afraid, all people are nice here, except for Mark")
+                    elif sentiment_lower == "surprise":
+                        speak("Why are you surprised? Never seen an AI Lynx before")
                     elif sentiment_lower == "neutral":
                         speak("Hey, please be happy, you work at lynqtech")
                     else:
