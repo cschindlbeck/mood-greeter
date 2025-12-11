@@ -139,8 +139,12 @@ while True:
                         speak("Don't be sad, think about your next paycheck")
                     elif sentiment_lower == "angry":
                         speak("Don't be angry, the weekend is around the corner")
+                    elif sentiment_lower == "fear":
+                        speak("Don't be afraid, all people are nice here, except for Mark")
                     elif sentiment_lower == "neutral":
                         speak("Hey, please be happy, you work at lynqtech")
+                    else:
+                        speak("Unknown emotions: You are not a robot, or are you?")
                     sentiment_announced = True
                     sentiment_locked_time = time.time()
 
