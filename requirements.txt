@@ -1,0 +1,8 @@
+# use python3.11
+tensorflow-macos
+tensorflow-metal
+deepface 
+tf-keras
+
+# for live video feed
+opencv-python
