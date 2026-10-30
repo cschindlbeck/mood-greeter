@@ -8,25 +8,22 @@ Mood Greeter is a macOS-only Python app. It detects a face through the webcam, e
 
 ## Setup
 
-Python 3.14. Homebrew's `python@3.14` works.
-
-```bash
-python3.14 -m venv .venv
-source .venv/bin/activate
-python3.14 -m pip install -r requirements.txt
-```
+Python 3.14. Homebrew's `python@3.14` works. `make setup` creates `.venv` and installs `requirements.txt`. It reruns when `requirements.txt` changes. `make clean` deletes `.venv`.
 
 ## Running the Scripts
 
 ```bash
-python3.14 static_images.py     # analyze angryface.jpeg
-python3.14 live_sentiment.py    # webcam + sentiment + speech; press q to quit
-python3.14 speech_test.py       # standalone test of the threaded `say` queue
+make run       # live_sentiment.py (default target): webcam + sentiment + speech; press q to quit
+make static    # static_images.py: analyze angryface.jpeg
+make speech    # speech_test.py: standalone test of the threaded `say` queue
+make test      # pytest: speech queue tests and the speech copy sync check
 ```
+
+Each target runs `setup` first when needed.
 
 `Live Sentiment.command` is a double-click launcher for Finder. It changes to its own directory, activates `.venv`, and runs `live_sentiment.py`. Run it only after setup.
 
-There are no tests, linter, formatter, or CI.
+`tests/` covers the speech queue only. `live_sentiment.py` runs at import (camera, DeepFace), so its loop has no tests. There is no linter, formatter, or CI.
 
 ## Architecture
 
@@ -44,8 +41,7 @@ Flat layout. Each script is standalone. There are no packages or shared modules.
 
 - `deepface` (>= 0.0.103): pre-trained emotion models, run on `onnxruntime` (CPU, about 6 ms per face). There is no TensorFlow in this project. Weights download to `~/.deepface/weights/` on first run.
 - `werkzeug`: DeepFace imports it but does not declare it. It must stay in `requirements.txt`, or `from deepface import DeepFace` fails.
-- `opencv-python`: capture, Haar cascade, display.
-- DeepFace also pulls in `opencv-contrib-python-headless`. Both packages write the same `cv2` folder. If the headless build wins, `cv2.imshow` fails. `cv2.getBuildInformation()` must show `GUI: COCOA`. Fix: `pip install --force-reinstall --no-deps opencv-python`.
+- `opencv-contrib-python-headless`: capture, Haar cascade, display. It is the same package DeepFace pulls in, so one package owns the `cv2` folder. On macOS it has the Cocoa window backend despite the name. OpenCV 5 moved `CascadeClassifier` to contrib, so keep `opencv-python` out of `requirements.txt`: it lacks the cascade and overwrites `cv2`. `make setup` asserts both the cascade and `GUI: COCOA`.
 
 ## Configuration Notes
 
