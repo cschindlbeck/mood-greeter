@@ -5,14 +5,14 @@
 Use a venv to isolate
 
 ```
-python3.11 -m venv .venv
+python3.14 -m venv .venv
 source .venv/bin/activate
 ```
 
 Install dependencies
 
 ```
-python3.11 -m pip install -r requirements.txt
+python3.14 -m pip install -r requirements.txt
 ```
 
 ## Run the Scripts
@@ -23,12 +23,11 @@ This script analyzes the sentiment of a face in a static image using DeepFace. B
 
 Run:
 ```
-python3.11 static_images.py
+python3.14 static_images.py
 ```
 
 Expected Output:
 - Displays the dominant emotion (e.g., happy, sad, angry) and the confidence percentage.
-- Note: Install `tensorflow-metal` for GPU acceleration on Mac.
 
 ### Live Sentiment Analysis
 
@@ -36,7 +35,7 @@ This script performs live sentiment analysis using your webcam feed. Detected fa
 
 Run:
 ```
-python3.11 live_sentiment.py
+python3.14 live_sentiment.py
 ```
 
 Instructions:
@@ -49,8 +48,8 @@ Instructions:
 
 Ensure the following libraries are installed (also included in `requirements.txt`):
 
-- `tensorflow-macos` and `tensorflow-metal`: Used for leveraging GPU capabilities on macOS.
-- `deepface`: Provides pre-trained models for face detection and sentiment analysis.
+- `deepface`: Provides pre-trained models for face detection and sentiment analysis. Runs on `onnxruntime` (CPU), no TensorFlow needed.
+- `werkzeug`: Imported by `deepface` but not declared as its dependency.
 - `opencv-python`: Used for live video feed processing.
 
 Install all dependencies:
@@ -67,5 +66,5 @@ pip install -r requirements.txt
 
 ## Additional Notes
 
-- This project uses TensorFlow and may require additional setup for GPU acceleration (especially on macOS with M1/M2 chips).
+- `deepface` also installs `opencv-contrib-python-headless`, which has no window support and shares the `cv2` folder with `opencv-python`. If the live window does not open, check that `python -c "import cv2; print(cv2.getBuildInformation())" | grep "GUI:"` shows `COCOA`. If not, run `pip install --force-reinstall --no-deps opencv-python`.
 - For faster or more accurate detection, modify the `detector_backend` parameter in `static_images.py` or `live_sentiment.py`. Supported backends include `opencv` (fastest) and `retinaface` (most accurate).

@@ -1,8 +1,8 @@
-# use python3.11
-tensorflow-macos
-tensorflow-metal
-deepface 
-tf-keras
+# use python3.14
+# deepface >= 0.0.103 runs on onnxruntime, no TensorFlow needed
+deepface>=0.0.103
+# deepface imports werkzeug but does not declare it
+werkzeug
 
 # for live video feed
 opencv-python
