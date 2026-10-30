@@ -52,6 +52,8 @@ greeted = False  # Track if we've greeted the current person
 sentiment_announced = False  # Track if we've announced the sentiment
 sentiment_locked_time = None  # When sentiment was locked (for cooldown)
 COOLDOWN_DURATION = 5  # Seconds to wait before new analysis
+read_failures = 0  # Consecutive failed camera reads
+READ_FAILURE_THRESHOLD = 5  # Failed reads before giving up (each read times out after ~1s; some cameras need >1s to warm up)
 
 # Initialize webcam (0 is usually the default Mac webcam)
 cap = cv2.VideoCapture(0)
@@ -66,8 +68,12 @@ while True:
     # 1. Capture frame-by-frame
     ret, frame = cap.read()
     if not ret:
-        print("Can't receive frame (stream end?). Exiting ...")
-        break
+        read_failures += 1
+        if read_failures >= READ_FAILURE_THRESHOLD:
+            print("Can't receive frame (stream end?). Exiting ...")
+            break
+        continue
+    read_failures = 0
 
     # 2. Convert to grayscale for the face detector (faster)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
