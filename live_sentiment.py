@@ -5,6 +5,7 @@ import threading
 import queue
 from collections import Counter
 from deepface import DeepFace
+from deepface.commons import weight_utils
 
 # Speech queue for non-blocking, sequential speech
 speech_queue = queue.Queue()
@@ -30,7 +31,13 @@ def speak(text):
     speech_queue.put(text)
 
 # Load face cascade classifier for fast detection (much faster than DeepFace's internal detector for video)
-face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+# OpenCV 5 wheels ship no cascade files, so fetch it into DeepFace's weight cache (~/.deepface/weights)
+CASCADE_FILE = 'haarcascade_frontalface_default.xml'
+cascade_path = weight_utils.download_weights_if_necessary(
+    file_name=CASCADE_FILE,
+    source_url=f'https://github.com/opencv/opencv/raw/4.9.0/data/haarcascades/{CASCADE_FILE}',
+)
+face_cascade = cv2.CascadeClassifier(cascade_path)
 
 # Sentiment detection settings
 ANALYSIS_DURATION = 3  # Seconds to analyze before locking sentiment

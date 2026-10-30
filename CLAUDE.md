@@ -41,7 +41,7 @@ Flat layout. Each script is standalone. There are no packages or shared modules.
 
 - `deepface` (>= 0.0.103): pre-trained emotion models, run on `onnxruntime` (CPU, about 6 ms per face). There is no TensorFlow in this project. Weights download to `~/.deepface/weights/` on first run.
 - `werkzeug`: DeepFace imports it but does not declare it. It must stay in `requirements.txt`, or `from deepface import DeepFace` fails.
-- `opencv-contrib-python-headless`: capture, Haar cascade, display. It is the same package DeepFace pulls in, so one package owns the `cv2` folder. On macOS it has the Cocoa window backend despite the name. OpenCV 5 moved `CascadeClassifier` to contrib, so keep `opencv-python` out of `requirements.txt`: it lacks the cascade and overwrites `cv2`. `make setup` asserts both the cascade and `GUI: COCOA`.
+- `opencv-contrib-python-headless`: capture, Haar cascade, display. It is the same package DeepFace pulls in, so one package owns the `cv2` folder. On macOS it has the Cocoa window backend despite the name. OpenCV 5 moved `CascadeClassifier` to contrib, so keep `opencv-python` out of `requirements.txt`: it lacks the cascade and overwrites `cv2`. `make setup` asserts both the cascade and `GUI: COCOA`. OpenCV 5 wheels ship no cascade XML files (`cv2.data.haarcascades` is empty), so `live_sentiment.py` downloads the face cascade into `~/.deepface/weights/` with DeepFace's `weight_utils`, the same way DeepFace does.
 
 ## Configuration Notes
 
