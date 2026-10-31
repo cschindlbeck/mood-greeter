@@ -2,18 +2,13 @@
 
 ## Install
 
-Use a venv to isolate
+Requires Python 3.14 (`brew install python@3.14`).
 
 ```
-python3.11 -m venv .venv
-source .venv/bin/activate
+make setup
 ```
 
-Install dependencies
-
-```
-python3.11 -m pip install -r requirements.txt
-```
+This creates `.venv`, installs `requirements.txt`, and checks that OpenCV has the Haar cascade and window support. `make clean` deletes `.venv`.
 
 ## Run the Scripts
 
@@ -23,12 +18,11 @@ This script analyzes the sentiment of a face in a static image using DeepFace. B
 
 Run:
 ```
-python3.11 static_images.py
+make static
 ```
 
 Expected Output:
 - Displays the dominant emotion (e.g., happy, sad, angry) and the confidence percentage.
-- Note: Install `tensorflow-metal` for GPU acceleration on Mac.
 
 ### Live Sentiment Analysis
 
@@ -36,12 +30,15 @@ This script performs live sentiment analysis using your webcam feed. Detected fa
 
 Run:
 ```
-python3.11 live_sentiment.py
+make run
 ```
+
+Or double-click `Live Sentiment.command` in Finder.
 
 Instructions:
 - Press `q` to quit.
-- Detected emotions will display above faces as text.
+- While the app reads your mood, a progress bar shows under your face and the share of each emotion shows next to it.
+- The result shows above your face.
 
 > Note: Ensure your camera is accessible and functional.
 
@@ -49,13 +46,13 @@ Instructions:
 
 Ensure the following libraries are installed (also included in `requirements.txt`):
 
-- `tensorflow-macos` and `tensorflow-metal`: Used for leveraging GPU capabilities on macOS.
-- `deepface`: Provides pre-trained models for face detection and sentiment analysis.
-- `opencv-python`: Used for live video feed processing.
+- `deepface`: Provides pre-trained models for face detection and sentiment analysis. Runs on `onnxruntime` (CPU), no TensorFlow needed.
+- `werkzeug`: Imported by `deepface` but not declared as its dependency.
+- `opencv-contrib-python-headless`: Used for the live video feed, face detection (Haar cascade), and the display window. On macOS this build has window support.
 
 Install all dependencies:
 ```
-pip install -r requirements.txt
+make setup
 ```
 
 ## Files Included
@@ -63,9 +60,10 @@ pip install -r requirements.txt
 - **`static_images.py`**: Performs sentiment analysis on static images.
 - **`live_sentiment.py`**: Analyzes facial sentiments in real-time using your camera.
 - **`requirements.txt`**: Contains all necessary dependencies.
+- **`Makefile`**: Setup and run targets (`setup`, `run`, `static`, `speech`, `clean`).
 - **`angryface.jpeg`**: Example image for testing.
 
 ## Additional Notes
 
-- This project uses TensorFlow and may require additional setup for GPU acceleration (especially on macOS with M1/M2 chips).
+- Keep `opencv-contrib-python-headless` as the only OpenCV package. OpenCV 5 moved `CascadeClassifier` to the contrib build, so `opencv-python` breaks `live_sentiment.py` when it overwrites the `cv2` folder.
 - For faster or more accurate detection, modify the `detector_backend` parameter in `static_images.py` or `live_sentiment.py`. Supported backends include `opencv` (fastest) and `retinaface` (most accurate).

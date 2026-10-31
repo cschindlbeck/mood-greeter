@@ -1,18 +1,10 @@
 import time
 
-import tensorflow as tf
 from deepface import DeepFace
 
 
 def analyze_sentiment(image_path):
     print(f"--- Analyzing: {image_path} ---")
-
-    # Check if Mac GPU (Metal) is available
-    gpus = tf.config.list_physical_devices('GPU')
-    if gpus:
-        print(f"✅ Hardware Acceleration Enabled: Using {len(gpus)} GPU(s)")
-    else:
-        print("⚠️  Running on CPU (Install tensorflow-metal for speed)")
 
     start_time = time.time()
 

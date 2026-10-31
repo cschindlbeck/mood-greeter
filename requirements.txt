@@ -1,8 +1,10 @@
-# use python3.11
-tensorflow-macos
-tensorflow-metal
-deepface 
-tf-keras
+# use python3.14
+# deepface >= 0.0.103 runs on onnxruntime, no TensorFlow needed
+deepface>=0.0.103
+# deepface imports werkzeug but does not declare it
+werkzeug
 
-# for live video feed
-opencv-python
+# for live video feed, Haar cascade and display window. Same package deepface
+# pulls in; on macOS it has the Cocoa window backend. opencv-python 5.x has no
+# CascadeClassifier and overwrites the same cv2 folder.
+opencv-contrib-python-headless

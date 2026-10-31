@@ -5,6 +5,7 @@ import threading
 import queue
 from collections import Counter
 from deepface import DeepFace
+from deepface.commons import weight_utils
 
 # Speech queue for non-blocking, sequential speech
 speech_queue = queue.Queue()
@@ -29,11 +30,22 @@ def speak(text):
     """Queue text for speech. Non-blocking, but speeches play sequentially."""
     speech_queue.put(text)
 
+
+def is_speaking():
+    """True while speech is queued or still playing."""
+    return speech_queue.unfinished_tasks > 0
+
 # Load face cascade classifier for fast detection (much faster than DeepFace's internal detector for video)
-face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+# OpenCV 5 wheels ship no cascade files, so fetch it into DeepFace's weight cache (~/.deepface/weights)
+CASCADE_FILE = 'haarcascade_frontalface_default.xml'
+cascade_path = weight_utils.download_weights_if_necessary(
+    file_name=CASCADE_FILE,
+    source_url=f'https://github.com/opencv/opencv/raw/4.9.0/data/haarcascades/{CASCADE_FILE}',
+)
+face_cascade = cv2.CascadeClassifier(cascade_path)
 
 # Sentiment detection settings
-ANALYSIS_DURATION = 3  # Seconds to analyze before locking sentiment
+ANALYSIS_DURATION = 1.5  # Seconds to analyze before locking sentiment
 sentiment_samples = []  # Collect samples during analysis period
 locked_sentiment = None  # The final locked sentiment
 face_detected_time = None  # When face was first detected
@@ -45,6 +57,9 @@ greeted = False  # Track if we've greeted the current person
 sentiment_announced = False  # Track if we've announced the sentiment
 sentiment_locked_time = None  # When sentiment was locked (for cooldown)
 COOLDOWN_DURATION = 5  # Seconds to wait before new analysis
+read_failures = 0  # Consecutive failed camera reads
+READ_FAILURE_THRESHOLD = 5  # Failed reads before giving up (each read times out after ~1s; some cameras need >1s to warm up)
+TALLY_WIDTH = 240  # Pixels for the emotion tally next to the face
 
 # Initialize webcam (0 is usually the default Mac webcam)
 cap = cv2.VideoCapture(0)
@@ -59,8 +74,12 @@ while True:
     # 1. Capture frame-by-frame
     ret, frame = cap.read()
     if not ret:
-        print("Can't receive frame (stream end?). Exiting ...")
-        break
+        read_failures += 1
+        if read_failures >= READ_FAILURE_THRESHOLD:
+            print("Can't receive frame (stream end?). Exiting ...")
+            break
+        continue
+    read_failures = 0
 
     # 2. Convert to grayscale for the face detector (faster)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -68,7 +87,17 @@ while True:
     # 3. Detect faces
     faces = face_cascade.detectMultiScale(gray, 1.1, 4)
 
-    # 4. Process detected faces
+    # 4. Hold the timers while speech plays, so the analysis window and the cooldown
+    # start only after the speech has finished. One snapshot per frame keeps the
+    # decisions below consistent.
+    speaking = is_speaking()
+    if speaking:
+        if face_detected_time is not None and locked_sentiment is None:
+            face_detected_time = time.time()
+        if sentiment_locked_time is not None:
+            sentiment_locked_time = time.time()
+
+    # 5. Process detected faces
     if len(faces) > 0:
         no_face_frames = 0  # Reset no-face counter
 
@@ -89,15 +118,17 @@ while True:
 
         # Start timing when face first detected or new person appears
         # Only restart if no active analysis (face_detected_time is None) or
-        # if new person AND previous analysis is complete
-        if face_detected_time is None or (is_new_person and sentiment_announced):
+        # if new person AND previous analysis is complete.
+        # Never while speech plays, so speech cannot pile up in the queue.
+        if not speaking and (face_detected_time is None or (is_new_person and sentiment_announced)):
             face_detected_time = time.time()
             sentiment_samples = []
             locked_sentiment = None
             sentiment_announced = False
             # Greet the person once when analysis starts
-            speak("Welcome to Lynqtech, how are you today?")
+            speak("Welcome to Lynqtech! Look at me for a moment, I'm reading your mood.")
             greeted = True
+            speaking = True  # Analysis starts after the greeting
 
         # Draw rectangle around face
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -105,9 +136,14 @@ while True:
         # Crop the face for DeepFace analysis
         face_roi = frame[y : y + h, x : x + w]
 
-        elapsed_time = time.time() - face_detected_time
+        if speaking:
+            # No samples while speech plays, so the result matches the face after it
+            if locked_sentiment is None:
+                cv2.putText(frame, "SPEAKING...", (x, y - 10),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 165, 255), 2)
+        elif locked_sentiment is None:
+            elapsed_time = time.time() - face_detected_time
 
-        if locked_sentiment is None:
             # Still in analysis period
             try:
                 results = DeepFace.analyze(face_roi, actions=['emotion'], enforce_detection=False, silent=True)
@@ -118,10 +154,12 @@ while True:
                 pass
 
             if elapsed_time < ANALYSIS_DURATION:
-                # Show analyzing status with countdown
-                remaining = ANALYSIS_DURATION - elapsed_time
-                cv2.putText(frame, f"ANALYZING... {remaining:.1f}s", (x, y - 10),
+                # Show analyzing status with a progress bar under the face
+                cv2.putText(frame, "READING YOUR MOOD...", (x, y - 10),
                            cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 165, 255), 2)
+                progress = int(w * elapsed_time / ANALYSIS_DURATION)
+                cv2.rectangle(frame, (x, y + h + 10), (x + w, y + h + 25), (0, 165, 255), 2)
+                cv2.rectangle(frame, (x, y + h + 10), (x + progress, y + h + 25), (0, 165, 255), -1)
             else:
                 # Lock the dominant sentiment
                 if sentiment_samples:
@@ -165,6 +203,22 @@ while True:
             # Display the locked sentiment
             cv2.putText(frame, locked_sentiment.upper(), (x, y - 10),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36, 255, 12), 2)
+
+        # Show the share of each emotion so far next to the face, leader first in green
+        if sentiment_samples:
+            tally_x = x + w + 10
+            if tally_x + TALLY_WIDTH > frame.shape[1]:
+                tally_x = max(0, x - 10 - TALLY_WIDTH)  # No room on the right
+            ranked = Counter(sentiment_samples).most_common()
+            # Darken the area behind the tally, so the text stays readable on light backgrounds
+            frame[max(0, y):y + 10 + len(ranked) * 25, max(0, tally_x - 5):tally_x + TALLY_WIDTH] //= 3
+            for i, (emotion, count) in enumerate(ranked):
+                share = count / len(sentiment_samples)
+                row_y = y + 20 + i * 25
+                color = (36, 255, 12) if i == 0 else (255, 255, 255)
+                cv2.putText(frame, emotion, (tally_x, row_y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+                cv2.rectangle(frame, (tally_x + 80, row_y - 14), (tally_x + 80 + int(100 * share), row_y), color, -1)
+                cv2.putText(frame, f"{share:.0%}", (tally_x + 190, row_y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
     else:
         # No face detected
         no_face_frames += 1
@@ -178,7 +232,7 @@ while True:
             sentiment_announced = False
             sentiment_locked_time = None
 
-    # 5. Display the resulting frame
+    # 6. Display the resulting frame
     cv2.imshow('Mac Pro Sentiment Analysis', frame)
 
     # Press 'q' to quit

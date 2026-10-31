@@ -26,6 +26,11 @@ def speak(text):
     speech_queue.put(text)
 
 
+def is_speaking():
+    """True while speech is queued or still playing."""
+    return speech_queue.unfinished_tasks > 0
+
+
 # Test the speech
 if __name__ == "__main__":
     print("Testing speech output...")
