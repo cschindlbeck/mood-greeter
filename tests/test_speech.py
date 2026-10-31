@@ -51,13 +51,32 @@ def test_none_stops_worker(speech_module):
     assert not speech_module.speech_thread.is_alive()
 
 
+def test_is_speaking_until_last_speech_ends(speech_module):
+    started = speech_module.threading.Event()
+    release = speech_module.threading.Event()
+
+    def slow_say(*_):
+        started.set()
+        release.wait(2)
+
+    assert not speech_module.is_speaking()
+    with mock.patch.object(speech_module.subprocess, "run", side_effect=slow_say):
+        speech_module.speak("slow")
+        assert started.wait(2)
+        assert speech_module.speech_queue.empty()  # the worker took the item ...
+        assert speech_module.is_speaking()  # ... but it still plays
+        release.set()
+        speech_module.speech_queue.join()
+    assert not speech_module.is_speaking()
+
+
 def _function_ast(path, name):
     tree = ast.parse(path.read_text())
     node = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name)
     return ast.dump(node)
 
 
-@pytest.mark.parametrize("name", ["speech_worker", "speak"])
+@pytest.mark.parametrize("name", ["speech_worker", "speak", "is_speaking"])
 def test_copies_stay_in_sync(name):
     """speech_worker/speak are copy-pasted in two scripts (see CLAUDE.md). Comments are ignored."""
     assert _function_ast(ROOT / "speech_test.py", name) == _function_ast(ROOT / "live_sentiment.py", name)

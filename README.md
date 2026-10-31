@@ -37,7 +37,8 @@ Or double-click `Live Sentiment.command` in Finder.
 
 Instructions:
 - Press `q` to quit.
-- Detected emotions will display above faces as text.
+- While the app reads your mood, a progress bar shows under your face and the share of each emotion shows next to it.
+- The result shows above your face.
 
 > Note: Ensure your camera is accessible and functional.
 

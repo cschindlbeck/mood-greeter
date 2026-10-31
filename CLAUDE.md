@@ -29,12 +29,14 @@ Each target runs `setup` first when needed.
 
 Flat layout. Each script is standalone. There are no packages or shared modules.
 
-- `live_sentiment.py` is one top-level loop with module-level state (no functions besides `speech_worker`/`speak`):
+- `live_sentiment.py` is one top-level loop with module-level state (no functions besides `speech_worker`/`speak`/`is_speaking`):
   - Haar cascade finds faces fast. The largest face is cropped and passed to `DeepFace.analyze` (emotion only).
-  - Per-person state machine: greet and collect emotion samples for `ANALYSIS_DURATION` (3s), lock the most common emotion, speak it with a canned line, wait `COOLDOWN_DURATION` (5s), then reset.
+  - Per-person state machine: greet, wait until the greeting ends, collect emotion samples for `ANALYSIS_DURATION` (1.5s), lock the most common emotion, speak it with a canned line, wait until the speech ends plus `COOLDOWN_DURATION` (5s), then reset.
+  - On screen: a progress bar under the face during the analysis, and a tally with the share of each emotion next to the face (left side if there is no room on the right).
+  - Speech gate: while `is_speaking()` is true (speech queued or playing), the loop takes no samples, starts no greeting, and holds the analysis and cooldown timers. So the queue holds at most one cycle of speech, and the spoken emotion matches the current face.
   - A face center jump of more than `POSITION_CHANGE_THRESHOLD` (150px) counts as a new person. No face for `NO_FACE_THRESHOLD` (15) frames resets all state.
   - Speech runs on a daemon thread that reads a `queue.Queue` and calls `subprocess.run(['say', ...])`, so the video loop never blocks.
-- `speech_worker`/`speak` are copy-pasted in `speech_test.py` and `live_sentiment.py`. Keep both in sync if you change one.
+- `speech_worker`/`speak`/`is_speaking` are copy-pasted in `speech_test.py` and `live_sentiment.py`. Keep both in sync if you change one.
 - `static_images.py` runs DeepFace once on one image.
 
 ## Key Dependencies
