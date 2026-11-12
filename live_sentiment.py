@@ -53,6 +53,8 @@ no_face_frames = 0  # Counter for frames without a face
 NO_FACE_THRESHOLD = 15  # Frames without face before resetting
 last_face_position = None  # Track face position to detect new person
 POSITION_CHANGE_THRESHOLD = 150  # Pixels - if face moves more than this, it's a new person
+MIN_FACE_SIZE = 80  # Pixels - smaller detections are treated as false positives
+SWITCH_FACTOR = 1.3  # Another face must have this times the area of the tracked face to take over
 greeted = False  # Track if we've greeted the current person
 sentiment_announced = False  # Track if we've announced the sentiment
 sentiment_locked_time = None  # When sentiment was locked (for cooldown)
@@ -85,7 +87,7 @@ while True:
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     # 3. Detect faces
-    faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+    faces = face_cascade.detectMultiScale(gray, 1.1, 4, minSize=(MIN_FACE_SIZE, MIN_FACE_SIZE))
 
     # 4. Hold the timers while speech plays, so the analysis window and the cooldown
     # start only after the speech has finished. One snapshot per frame keeps the
@@ -101,9 +103,24 @@ while True:
     if len(faces) > 0:
         no_face_frames = 0  # Reset no-face counter
 
-        # Find the largest face (closest to camera / in front)
-        largest_face = max(faces, key=lambda f: f[2] * f[3])
-        x, y, w, h = largest_face
+        # Pick exactly one face. Default: the largest (closest to camera / in front).
+        # Sticky: if the tracked face is still there, keep it unless another face
+        # is clearly larger. This stops the choice from flipping between two similar faces.
+        chosen_face = max(faces, key=lambda f: f[2] * f[3])
+        if last_face_position is not None:
+            tracked_face = min(
+                faces,
+                key=lambda f: (f[0] + f[2] // 2 - last_face_position[0]) ** 2
+                + (f[1] + f[3] // 2 - last_face_position[1]) ** 2,
+            )
+            tracked_dx = abs(tracked_face[0] + tracked_face[2] // 2 - last_face_position[0])
+            tracked_dy = abs(tracked_face[1] + tracked_face[3] // 2 - last_face_position[1])
+            tracked_is_near = tracked_dx <= POSITION_CHANGE_THRESHOLD and tracked_dy <= POSITION_CHANGE_THRESHOLD
+            chosen_area = chosen_face[2] * chosen_face[3]
+            tracked_area = tracked_face[2] * tracked_face[3]
+            if tracked_is_near and chosen_area < SWITCH_FACTOR * tracked_area:
+                chosen_face = tracked_face
+        x, y, w, h = chosen_face
         current_face_center = (x + w // 2, y + h // 2)
 
         # Check if this is a new person (significant position change)
