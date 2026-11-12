@@ -245,3 +245,7 @@ __marimo__/
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
+
+# The lynx model is company property and must not be in this public repo. `make setup` fetches it.
+assets/*.glb
+assets/*.tmp

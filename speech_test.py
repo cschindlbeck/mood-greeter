@@ -1,45 +1,15 @@
-import subprocess
-import threading
-import queue
+"""Standalone test of the lynx voice: renders and plays a few lines in order."""
+from lynx_voice import Voice
 
-# Speech queue for non-blocking, sequential speech
-speech_queue = queue.Queue()
-
-
-def speech_worker():
-    """Background thread that processes speech queue sequentially."""
-    while True:
-        text = speech_queue.get()
-        if text is None:  # Shutdown signal
-            break
-        subprocess.run(['say', '-r', '195', text])  # 195 wpm (~10% faster)
-        speech_queue.task_done()
-
-
-# Start the speech worker thread
-speech_thread = threading.Thread(target=speech_worker, daemon=True)
-speech_thread.start()
-
-
-def speak(text):
-    """Queue text for speech. Non-blocking, but speeches play sequentially."""
-    speech_queue.put(text)
-
-
-def is_speaking():
-    """True while speech is queued or still playing."""
-    return speech_queue.unfinished_tasks > 0
-
-
-# Test the speech
 if __name__ == "__main__":
     print("Testing speech output...")
 
-    speak("This is a speech test")
-    speak("This is a speech test")
-    speak("This is a speech test")
-    speak("This is a speech test")
+    voice = Voice(publish=lambda event: print({**event, "envelope": "..."} if event.get("envelope") else event))
+    voice.speak("This is a speech test.")
+    voice.speak("Welcome to the LYNQTECH Christmas party!")
+    voice.speak("This is the last line.")
 
     # Wait for all speech to finish
-    speech_queue.join()
+    voice.wait()
+    voice.close()
     print("Speech test complete!")

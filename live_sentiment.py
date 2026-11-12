@@ -1,39 +1,19 @@
 import cv2
 import time
-import subprocess
-import threading
-import queue
+import numpy as np
 from collections import Counter
 from deepface import DeepFace
 from deepface.commons import weight_utils
 
-# Speech queue for non-blocking, sequential speech
-speech_queue = queue.Queue()
+import lynx_show
 
+args = lynx_show.argument_parser("Christmas lynx greeter: webcam mood detection with a talking 3D lynx.").parse_args()
 
-def speech_worker():
-    """Background thread that processes speech queue sequentially."""
-    while True:
-        text = speech_queue.get()
-        if text is None:  # Shutdown signal
-            break
-        subprocess.run(['say', '-r', '195', text])  # Default is ~175 wpm, 195 is ~10% faster
-        speech_queue.task_done()
-
-
-# Start the speech worker thread
-speech_thread = threading.Thread(target=speech_worker, daemon=True)
-speech_thread.start()
-
-
-def speak(text):
-    """Queue text for speech. Non-blocking, but speeches play sequentially."""
-    speech_queue.put(text)
-
-
-def is_speaking():
-    """True while speech is queued or still playing."""
-    return speech_queue.unfinished_tasks > 0
+# The lynx show: the page with the 3D lynx, the speech with lip sync and the camera preview.
+# It starts first, so the lynx is on screen while the camera and DeepFace get ready.
+show = lynx_show.Show(port=args.port, fullscreen=not args.window, browser=not args.no_browser)
+speak = show.speak
+is_speaking = show.is_speaking
 
 # Load face cascade classifier for fast detection (much faster than DeepFace's internal detector for video)
 # OpenCV 5 wheels ship no cascade files, so fetch it into DeepFace's weight cache (~/.deepface/weights)
@@ -62,26 +42,35 @@ COOLDOWN_DURATION = 5  # Seconds to wait before new analysis
 read_failures = 0  # Consecutive failed camera reads
 READ_FAILURE_THRESHOLD = 5  # Failed reads before giving up (each read times out after ~1s; some cameras need >1s to warm up)
 TALLY_WIDTH = 240  # Pixels for the emotion tally next to the face
+CAMERA_RETRY_SECONDS = 3  # Wait between attempts to open a lost camera again
+NO_CAMERA_FRAME = np.zeros((720, 1280, 3), np.uint8)  # Stands in for a missing frame
+cv2.putText(NO_CAMERA_FRAME, "NO CAMERA", (430, 380), cv2.FONT_HERSHEY_SIMPLEX, 2.5, (255, 255, 255), 5)
 
 # Initialize webcam (0 is usually the default Mac webcam)
 cap = cv2.VideoCapture(0)
 
 if not cap.isOpened():
-    print("Cannot open camera")
-    exit()
+    print("Cannot open camera. The lynx stays idle. Check the camera permission of the terminal.")
 
-print("--- Press 'q' to quit ---")
-
-while True:
+# Ctrl+C in the terminal or 'q' in the lynx page ends the loop
+while not show.quit_requested():
     # 1. Capture frame-by-frame
     ret, frame = cap.read()
     if not ret:
+        # A missing frame or a lost camera must not stop the lynx. A black frame goes
+        # through the loop as "no face", and the camera is opened again now and then.
         read_failures += 1
+        if read_failures == READ_FAILURE_THRESHOLD:
+            print("Can't receive frames. The lynx stays idle until the camera is back.")
         if read_failures >= READ_FAILURE_THRESHOLD:
-            print("Can't receive frame (stream end?). Exiting ...")
-            break
-        continue
-    read_failures = 0
+            cap.release()
+            time.sleep(CAMERA_RETRY_SECONDS)
+            cap = cv2.VideoCapture(0)
+        else:
+            time.sleep(0.05)
+        frame = NO_CAMERA_FRAME.copy()
+    else:
+        read_failures = 0
 
     # 2. Convert to grayscale for the face detector (faster)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -143,7 +132,7 @@ while True:
             locked_sentiment = None
             sentiment_announced = False
             # Greet the person once when analysis starts
-            speak("Welcome to Lynqtech! Look at me for a moment, I'm reading your mood.")
+            speak(show.lines.welcome())
             greeted = True
             speaking = True  # Analysis starts after the greeting
 
@@ -186,22 +175,8 @@ while True:
 
                 # Announce the sentiment
                 if not sentiment_announced:
-                    speak(f"You seem to be feeling {locked_sentiment}")
-                    sentiment_lower = locked_sentiment.lower()
-                    if sentiment_lower == "happy":
-                        speak("You are here to work, not to be happy")
-                    elif sentiment_lower == "sad":
-                        speak("Don't be sad, think about your next paycheck")
-                    elif sentiment_lower == "angry":
-                        speak("Don't be angry, the weekend is around the corner")
-                    elif sentiment_lower == "fear":
-                        speak("Don't be afraid, all people are nice here, except for Mark")
-                    elif sentiment_lower == "surprise":
-                        speak("Why are you surprised? Never seen an AI Lynx before")
-                    elif sentiment_lower == "neutral":
-                        speak("Hey, please be happy, you work at lynqtech")
-                    else:
-                        speak("Unknown emotions: You are not a robot, or are you?")
+                    # One Christmas line per mood. The mood also sets the pose of the lynx.
+                    speak(show.lines.mood_line(locked_sentiment), mood=locked_sentiment)
                     sentiment_announced = True
                     sentiment_locked_time = time.time()
 
@@ -249,13 +224,20 @@ while True:
             sentiment_announced = False
             sentiment_locked_time = None
 
-    # 6. Display the resulting frame
-    cv2.imshow('Mac Pro Sentiment Analysis', frame)
+    # 6. Tell the lynx page what happens, and show the frame in its camera preview
+    # A person counts as present until the no-face reset above has run
+    present = len(faces) > 0 or last_face_position is not None
+    if not present:
+        phase = "idle"
+    elif locked_sentiment is not None:
+        phase = "result"
+    elif face_detected_time is not None and not is_speaking():
+        phase = "analysing"
+    else:
+        phase = "greeting"
+    show.set_state(present=present, phase=phase, mood=locked_sentiment)
+    show.show_frame(frame)
 
-    # Press 'q' to quit
-    if cv2.waitKey(1) == ord('q'):
-        break
-
-# When everything done, release the capture
+# When everything done, release the capture and close the lynx page
 cap.release()
-cv2.destroyAllWindows()
+show.close()
